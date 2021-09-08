@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE-edge">
+    <meta name="viewport" content="width=device-width initial-scale=1.0">
+    <link rel="shortcut icon" href="images/favicon.ico" type="image/x-icon">
+    <title>Snake</title>
+    <style>
+        body{
+            background:#e69597;
+            text-align:center;
+            margin: auto 0 0 0 ;
+        }
+        canvas{
+            border: solid 6px #c9e3ac;
+            background: #eaefbd;
+        }
+    </style>
+</head>
+<body>
+    <h1>Puntos:<span id="result"></span></h1>
+    <canvas width="500" height="500"></canvas>
+    <script>
+        const puntos = document.querySelector('#result');
+        //ancho y alto del canvas
+        const ANCHO = 500;
+        // intervalo del loop
+        const INTERVALO = 80;
+        // tamaño del cuadrado
+        const PESO = 10;
+        //configuración de teclas y direcciones
+        const DIRECCION = {
+            A: [-1, 0],
+            D: [1, 0],
+            S: [0, 1],
+            W: [0, -1],
+            a: [-1, 0],
+            d: [1, 0],
+            s: [0, 1],
+            w: [0, -1],
+            ArrowDown: [0, 1],
+            ArrowUp: [0, -1],
+            ArrowRight: [1, 0],
+            ArrowLeft: [-1, 0]
+        }
+        //controles y seteos de dirección y bicho
+        let controles = {
+            direccion:{x:1, y:0}, 
+            bicho:[{x:0, y:0}], 
+            victima:{x:0, y:250},
+            jugando: false,
+            crecimiento: 0,
+            puntos: 0
+        };
+        //variable con las direcciones
+        let padonde;
+        // referencio el canvas en js
+        let papel = document.querySelector("canvas");
+        //referencia al contexto del canvas
+        let ctx = papel.getContext("2d");
+
+        let looper = ()=>{
+            //arma objeto vacío de cola
+            let cola = {}
+            //instancia la cabeza
+            const sq= controles.bicho[0]
+            //clona la última posición del bicho en cola
+            Object.assign(cola, controles.bicho[controles.bicho.length-1])
+            //verifico que atrapó a la víctima
+            let atrapado = sq.x === controles.victima.x && sq.y === controles.victima.y
+            if(detectarChoque()){
+                controles.jugando = false;
+                //reiniciar();
+            }
+            //referencio la dirección actual
+            let dx =  controles.direccion.x;
+            let dy =  controles.direccion.y;
+            //le sumo la dirección a la posición de la snake
+            let tamaño = controles.bicho.length - 1;
+
+            if(controles.jugando){
+                //lee el bicho de atrás para adelante
+                for(let idx = tamaño; idx> -1; idx--){
+                //referencia la cabeza
+                const sq= controles.bicho[idx]
+                //chequea si es la cabeza
+                if(idx===0){
+                    sq.x += dx;
+                    sq.y += dy;
+                } else {
+                    //asigna la posición del cuadrado anterior
+                    sq.x = controles.bicho[idx-1].x;
+                    sq.y = controles.bicho[idx-1].y;
+                }   
+            }
+            }
+            puntos.textContent = controles.puntos;
+            if (atrapado){
+                //le digo que crezca 10 más
+                controles.puntos+=1;
+                controles.crecimiento += 10 + controles.puntos;
+                //reposiciono a la víctima
+                reVictima()
+            }
+
+            if(controles.crecimiento>0){
+                //agrego al bicho el clon de cola creado anteriormente
+                controles.bicho.push(cola)
+                controles.crecimiento -= 1
+            }
+            //llamo a la animación a dibujar
+            requestAnimationFrame(dibujar)
+            //llamar a la función luego de x intervalo
+            if(controles.jugando){
+                setTimeout(looper, INTERVALO-controles.puntos)
+            } else {
+                let r = confirm(`Al lobby pt hiciste ${controles.puntos} puntos \n¿Vamos de nuevo?`)
+                if(r){
+                    reiniciar();
+                    looper();
+                }
+            }
+            
+        }
+        //detecto el choque con paredes y cuerpo
+        let detectarChoque = ()=>{
+            //instancia a la cabeza
+            const head = controles.bicho[0]
+            //pregunta si choca con los bordes
+            if (head.x<0 || head.x>=ANCHO/PESO || head.y<0 || head.y>=ANCHO/PESO){
+                return true
+            }
+            //detecta si choca contra sí misma
+            for(let idx = 1; idx< controles.bicho.length; idx++){
+            const sq = controles.bicho[idx]
+            if(sq.x==head.x && sq.y==head.y){
+                return true
+            }
+            }
+        }
+
+        document.onkeydown = (e)=>{
+            //guarda la nueva dirección
+            padonde = DIRECCION[e.key];
+            //deconstruyo x e y
+            const [x, y] = padonde;
+            //valida que no quiera ir de reversa
+            if(-x !== controles.direccion.x && -y !== controles.direccion.y){
+                //asigna direcciones a controles
+                controles.direccion.x = x;
+                controles.direccion.y = y;
+            }
+        }
+        let dibujar = ()=>{
+            //borra el canvas
+            ctx.clearRect(0,0,ANCHO,ANCHO)
+            //recorro el bicho y hago un cuadrado por elemento del array
+            for(let idx=0; idx<controles.bicho.length; idx++){
+                const {x, y} = controles.bicho[idx];
+                dibujarActores("#90be6d", x, y)
+            }
+            //cargo a la víctima
+            const victima = controles.victima
+            dibujarActores("#ff7477", victima.x, victima.y)
+        }
+        //dibuja los cuadros
+        let dibujarActores = (color, x, y)=>{
+            //asigna color
+            ctx.fillStyle = color
+            // creo un rectángulo (posX, posY, ancho, alto)
+            ctx.fillRect(x*PESO, y*PESO, PESO, PESO)
+        }
+        //crea posición y dirección random
+        let cualquierLado = ()=>{
+            let direccion = Object.values(DIRECCION);
+            return {
+                x: parseInt(Math.random()*ANCHO/PESO),
+                y: parseInt(Math.random()*ANCHO/PESO),
+                d: direccion[parseInt(Math.random()*11)]
+            }
+        }
+        //reposiciona a la presa cuando fue capturada
+        let reVictima = ()=>{
+            let nuevaPosicion = cualquierLado()
+            let victima = controles.victima
+           victima.x = nuevaPosicion.x;
+           victima.y = nuevaPosicion.y;
+        }
+        //reinicia el juego y sus valores
+        let reiniciar = ()=>{
+            controles = {
+            direccion:{x:1, y:0}, 
+            bicho:[{x:0, y:0}], 
+            victima:{x:0, y:250},
+            jugando: false,
+            crecimiento: 0,
+            puntos: 0
+        };
+           posiciones = cualquierLado()
+           let kbza = controles.bicho[0]
+           kbza.x = posiciones.x;
+           kbza.y = posiciones.y;
+           controles.direccion.x = posiciones.d[0];
+           if(kbza.x<150 && controles.direccion.x==-1){
+            controles.direccion.x= 1;
+           }
+           if(kbza.x>(ANCHO-150) && controles.direccion.x==1){
+            controles.direccion.x= -1;
+           }
+           controles.direccion.y = posiciones.d[1];
+           if(kbza.y<150 && controles.direccion.y==-1){
+            controles.direccion.y= 1;
+           }
+           if(kbza.y>(ANCHO-150) && controles.direccion.y==1){
+            controles.direccion.y= -1;
+           }
+           //posicion random de la víctima
+           posicionVictima = cualquierLado()
+           let victima = controles.victima
+           victima.x = posicionVictima.x;
+           victima.y = posicionVictima.y;
+           controles.jugando = true;
+           //looper()
+        }
+        //cuando el documento carga, llama al looper
+        window.onload = ()=>{
+           reiniciar();
+           looper();
+        }
+    </script>
+</body>
+</html>
